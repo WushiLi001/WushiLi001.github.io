@@ -1,0 +1,87 @@
+//FAQ
+var coll = document.getElementsByClassName("_collapsible");
+var i;
+
+for (i = 0; i < coll.length; i++) {
+  coll[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var content = this.nextElementSibling;
+    if (content.style.display === "block") {
+    	$(content).slideUp();
+    } else {
+    	$(content).slideDown();
+    }
+  });
+}
+
+//Read more articles
+var readMoreButtons = document.getElementsByClassName("js-readMoreButton");
+
+for (var i = 0; i < readMoreButtons.length; i++) 
+{
+	readMoreButtons[i].innerHTML = NRGReadMore;
+}
+
+for (var i = 0; i < readMoreButtons.length; i++) 
+{
+	readMoreButtons[i].addEventListener("click", myFunction, false);
+}
+window.onload = function(){
+	
+}
+
+$(document).ready(function() {
+	$('input[name="txtaccountNumber"]').keydown(function (e) {
+	    var inputLength = $(this).val().length;
+	    if(inputLength > 8) {
+	        e.preventDefault();
+	        return false;
+	    }
+	})	
+});
+
+function myFunction(event) {
+	  
+	  var a = event.target.id;
+	  var b = a+a ; 
+	  var btnText = document.getElementById(a);
+	  var content = document.getElementById(b);
+	  
+	  
+	  if (btnText.innerHTML === NRGReadMore) {
+		  $(content).slideDown();
+		  
+		  //content.style.height = "60px";
+	     btnText.innerHTML = NRGReadLess; 
+	   
+	  } else {
+		  $(content).slideUp();
+	    btnText.innerHTML = NRGReadMore; 
+	    
+	  }
+	}
+
+
+
+//MarketingPage
+
+//Energy Saving Tips
+window.addEventListener("hashchange", function () {
+    window.scrollTo(window.scrollX, window.scrollY - 90);
+});
+//Energy Saving Tips
+
+//Auto Fill CA
+window.addEventListener ? 
+		window.addEventListener("load",preFillCA,false) : 
+		window.attachEvent && window.attachEvent("onload",preFillCA);
+
+function preFillCA (){
+    var urlParams = new URLSearchParams(window.location.search);
+    var ca_number = urlParams.get('CANumber');
+    if( ca_number ) {
+        document.getElementById('ca_id').value = ca_number;
+
+    }
+}
+

@@ -1,0 +1,460 @@
+(function (m) {
+  "use strict";
+
+  var CommonController = function (oeSession) {
+    var vm = this;
+
+    vm.ok = function () {
+      oeSession.setWorking('Please wait...', false);
+      var mi = oeSession.getModalInfo();
+      if (mi.redirectOK != '') {
+        oeSession.setWorking('Please wait...', true);
+        window.location.href = mi.redirectOK;
+      }
+    }
+    
+
+    vm.cancel = function () {
+      oeSession.setWorking('Please wait...', false);
+      var mi = oeSession.getModalInfo();
+      if (mi.redirectCancel != '') {
+        oeSession.setWorking('Please wait...', true);
+        window.location.href = mi.redirectCancel;
+      }
+    }
+    
+    
+    vm.closeModal = function () {
+    	$('.secondaryplans').html("");
+    	angular.element('#modal-msg-link-close').click()
+         vm.isLoading = true;
+        oeSession.setProspectTdsp();
+        vm.isLoading = false;
+    	}
+    
+    vm.closezipnotserved = function () {
+    	$('#loading-modal-link-close').click();
+    }
+    
+  }
+
+  var ContactController = function ($scope, oeSession) {
+    var vm = this;
+    var qs = {};
+    vm.isLoading = false;
+    vm.contactForm = new oeSession.ContactForm("");
+    vm.hideDepartment = true;
+    vm.UpdatePreferencesForm = new oeSession.UpdatePreferencesForm();
+    var focuselement = document.getElementById('firstname');
+    if (typeof (focuselement) != 'undefined' && focuselement != null) {
+        document.getElementById('firstname').focus();
+    }
+    location.search.substr(1).split("&").forEach(function (item) {
+      var s = item.split("="),
+          k = s[0],
+          v = s[1] && decodeURIComponent(s[1]);
+      (k in qs) ? qs[k].push(v) : qs[k] = [v]
+    })
+    if (typeof qs.contactState != 'undefined') {
+      vm.contactState = qs.contactState[0];
+    } else {
+      vm.contactState = 'TX';
+    }
+
+    vm.ok2Cancel = function () {
+			var $id = $(this).closest('.modal');
+		//reset position to top over modal
+		
+		//remove active classes
+		$id.removeClass('active');
+		$('.mask--modal').removeClass('active'); 
+		$('body').removeClass('modal-on');
+			$("#js-infoModal-Msg").hide();
+
+		}
+
+    vm.contactUs = function () {
+      vm.isLoading = true;
+      var url = $("#js-contactUsForm").data("url");
+      oeSession.submitContactUs(vm.contactForm, url);
+      vm.contactForm = new oeSession.ContactForm(vm.contactForm.department);
+      $scope.contactUsForm.$setPristine();
+      $scope.contactUsForm.$setUntouched();
+      vm.isLoading = false;
+    }
+     
+    vm.CcpaRequestForm = new oeSession.CcpaRequestForm([]);
+    vm.toggleSelection = function(reqType) {
+          var idx = vm.CcpaRequestForm.requestType.indexOf(reqType);
+          if (idx > -1)
+              vm.CcpaRequestForm.requestType.splice(idx, 1);
+          else
+              vm.CcpaRequestForm.requestType.push(reqType);
+      };
+      vm.ccpaSubmit = function() {
+        vm.isLoading = true;
+        oeSession.submitCcpaRequest(vm.CcpaRequestForm);
+        vm.CcpaRequestForm = new oeSession.CcpaRequestForm([]);
+        $scope.ccpaRequestForm.$setPristine();
+        $scope.ccpaRequestForm.$setUntouched();
+        vm.isLoading = false;
+    }
+    
+    vm.requestforQuote = function () {
+    	console.log("requestforQuote=",vm.contactForm);
+    	 
+        vm.isLoading = true;
+        var url = $("#js-contactUsForm").data("url");
+        oeSession.submitContactUs(vm.contactForm, url);
+        vm.contactForm = new oeSession.ContactForm(vm.contactForm.department);
+        $scope.contactUsForm.$setPristine();
+        $scope.contactUsForm.$setUntouched();
+        vm.isLoading = false;
+      }
+
+    vm.updatePreferences = function () {
+        if ($scope.updatePreferenceForm.$invalid) 
+            return;
+        vm.isLoading = true;
+        oeSession.submitUpdatePreference(vm.UpdatePreferencesForm, $('#js-optOutForm').data("url"));
+        vm.UpdatePreferencesForm = new oeSession.UpdatePreferencesForm();
+        $scope.updatePreferenceForm.$setPristine();
+        $scope.updatePreferenceForm.$setUntouched();
+        vm.isLoading = false;
+    }
+  }
+
+  var ContractsController = function (oeSession) {
+    var vm = this;
+    vm.isLoading = false;
+
+    vm.selectContract = function (contract) {
+      vm.isLoading = true;
+      oeSession.setContract(contract);
+      vm.isLoading = false;
+    }
+
+    vm.getNRGdate = function (str) {
+      if (!/^(\d){8}$/.test(str)) return "NA";
+      var y = str.substr(0, 4),
+          m = str.substr(4, 2),
+          d = str.substr(6, 2);
+      return new Date(y, m, d);
+    }
+  }
+
+  var FaqController = function (oeSession) {
+    var vm = this;
+    vm.isLoading = false;
+    vm.showDropdown = true;
+    vm.listHdrId = '0';
+    vm.listType = 'cards';
+    vm.faq = {};
+
+    vm.getFaqData = function () {
+      vm.isLoading = true;
+      if (vm.listHdrId == '0') {
+        vm.faq.faqList = {};
+        vm.isLoading = false;
+      } else {
+        oeSession.getFaqData(vm.listHdrId).then(function (data) {
+          vm.faq.faqList = data.faqList;
+          vm.isLoading = false;
+        });
+      }
+    }
+  }
+
+  var GraphController = function (oeSession) {
+    var vm = this;
+    vm.graphData = [{}];
+    vm.isLoading = true;
+
+    oeSession.getGraphData().then(function (data) {
+      vm.graphData = data;
+      vm.isLoading = false;
+    });
+    vm.preselect = function () {
+      if (oeSession.getCurrentTdsp().length > 0) {
+        var lnk = '#a' + oeSession.getCurrentTdsp();
+        $(lnk).click();
+      }
+    }
+    vm.getBarClass = function (isCirro) {
+      if (isCirro) {
+        return "chartBar";
+      } else {
+        return "chartBar_c";
+      }
+    }
+    vm.getBarStyle = function (i, h) {
+      var left = (i * 16.66666667) + 2;
+      var height = h * .90;
+      return { "left": left.toString() + "%", "height": height.toString() + "%" };
+    }
+    vm.getBarLabelStyle = function (h) {
+      var height = 2.5 * h * .90;
+      return { "line-height": height.toString() + "px" };
+    }
+    vm.getLabelStyle = function (i) {
+      var left = (i * 16.66666667) + 2;
+      return { "left": left.toString() + "%" };
+    }
+  }
+
+  var HeroController = function () {
+    var vm = this;
+    vm.heroSize = 'small';
+    vm.inverseColor = '';
+    vm.heroBg = {};
+    vm.heroSize = {};
+  }
+
+  var LoginController = function (oeSession) {
+    var vm = this;
+    vm.isLoading = false;
+    vm.loginInfo = new oeSession.LoginInfo();
+
+    vm.setLoginForm = function () {
+      if (vm.loginInfo.loginType == 'dob') {
+        vm.loginInfo.loginValue = '';
+        $("#loginValue").prop('required', false);
+        $("#loginDay").prop('required', true);
+        $("#loginMonth").prop('required', true);
+      } else {
+        vm.loginInfo.loginValue = '';
+        vm.loginInfo.loginDay = '';
+        vm.loginInfo.loginMonth = '';
+        $("#loginDay").prop('required', false);
+        $("#loginMonth").prop('required', false);
+        $("#loginValue").prop('required', true);
+        if (vm.loginInfo.loginType == 'esi') {
+          $("#loginValue").attr("placeholder", "12345");
+        } else {
+          $("#loginValue").attr("placeholder", "1234");
+        }
+      }
+    }
+
+    vm.setContractAccount = function (ca) {
+      var temp = ca.userForm.ca_id.$modelValue + '';
+      temp = temp.replace(/^\s+|\s+$/g, '');
+      if (temp.indexOf('-') > 0) {
+        ca.customer.contractAccountId=temp.substring(0, temp.indexOf('-'));
+      }
+    }
+
+    vm.setLoginValue = function () {
+      if (vm.loginInfo.loginType == 'dob') {
+        vm.loginInfo.loginValue = vm.loginInfo.loginMonth + vm.loginInfo.loginDay;
+      }
+    }
+
+    vm.login = function () {
+      vm.isLoading = true;
+      oeSession.setLogin(vm.loginInfo);
+      vm.isLoading = false;
+    }
+
+    vm.setDirectMailProspect = function () {
+      vm.isLoading = true;
+      var url = $("#js-promoForm").data("url");
+      oeSession.setProspectId(oePROSPECT, url);
+//      $scope.promoForm.$setPristine();
+//      $scope.promoForm.$setUntouched();
+        vm.isLoading = false;
+    }
+
+    vm.resetDirectMailProspect = function () {
+      vm.isLoading = true;
+      oeSession.setProspectId("reset");
+      vm.isLoading = false;
+    }
+
+    //TODO: send input data
+    vm.selectDirectMailProspect = function (prospect) {
+      oeSession.setWorking('Loading Plan, please wait...', true);
+     // var durl =$("#directMailPlanPopUp").data("url");
+      
+     var plansList = oeSession.getDirectMailProspect(prospect);
+      
+      /*
+      var url = window.location.href;
+      if (url.charAt(url.length - 1) == "#") {
+        url = url.replace('#', '');
+      }
+      if (url.charAt(url.length - 1) == "/") {
+        url = url + 'plan';
+      } else {
+        url = url + '/plan';
+      }
+      window.location = url;*/
+    }
+  }
+
+  var PlansController = function (oeSession) {
+    var vm = this;
+    vm.isLoading = false;
+    vm.showSecondary = false;
+
+    vm.moreInfo = function (plan) {
+      oeSession.setSelectedPlan(plan);
+      oeSession.showPlanModal(true);
+    }
+
+    vm.keepCurrentPlan = function () {
+      vm.isLoading = true;
+      oeSession.setPlan("keep", null);
+      vm.isLoading = false;
+    }
+
+    vm.signup = function (plan) {
+      vm.isLoading = true;
+      oeSession.setPlan("signup", plan);
+      vm.isLoading = false;
+    }
+
+    vm.renew = function (plan) {
+      vm.isLoading = true;
+      oeSession.setPlan("renew", plan);
+      vm.isLoading = false;
+    }
+
+    vm.transfer = function (plan) {
+      vm.isLoading = true;
+      oeSession.setPlan("move", plan);
+      vm.isLoading = false;
+    }
+  };
+
+  var SwapController = function (oeSession) {
+    var vm = this;
+    vm.isLoading = false;
+    vm.isExpired = true;
+    vm.loginInfo = new oeSession.LoginInfo();
+
+    vm.setLoginInfo = function () {
+      if (vm.loginInfo.loginType == 'dob') {
+        vm.loginInfo.loginValue = '';
+      } else {
+        vm.loginInfo.loginValue = '';
+        vm.loginInfo.loginDay = '';
+        vm.loginInfo.loginMonth = '';
+        var sq = oeSession.getSecurityQuestion(vm.loginInfo.loginType);
+        $("#loginValue").attr('pattern', sq.pattern);
+        $("#loginValue").attr("placeholder", sq.placeholder);
+      }
+    }
+    vm.setLoginValue = function () {
+      if (vm.loginInfo.loginType == 'dob') {
+        vm.loginInfo.loginValue = vm.loginInfo.loginMonth + vm.loginInfo.loginDay;
+      }
+    }
+    vm.verify = function () {
+      vm.isLoading = true;
+      oeSession.setCustomerVerify(vm.loginInfo);
+      vm.isLoading = false;
+    }
+
+    vm.renew = function () {
+      var customer = oeSession.getCustomer();
+      if (customer.isLoggedIn) {
+        oeSession.setSwap();
+      } else {
+        vm.verify();
+      }
+    }
+
+    vm.setExpired = function () {
+      var expd = getQueryStringVariable('expire_on') + '';
+      expd = [expd.slice(0, 2), '/', expd.slice(2)].join('');
+      expd = [expd.slice(0, 5), '/', expd.slice(5)].join('');
+
+      if (expd == '//') {
+        vm.isExpired = true;
+        vm.expiredOnDate = new Date();
+      } else {
+        var ts = Date.parse(expd);
+
+        if (isNaN(ts) == false) {
+          vm.expiredOnDate = new Date(ts);
+          var t = new Date();
+          if (t > vm.expiredOnDate) {
+            vm.isExpired = true;
+          } else {
+            vm.isExpired = false;
+          }
+        } else {
+          //not a valid date, so show expired
+          vm.expiredOnDate = new Date();
+          vm.isExpired = true;
+        }
+      }
+    }
+
+    vm.nth = function (t) {
+      var d = t * 1;
+      if (d > 3 && d < 21) return t + "th";
+      switch (d % 10) {
+        case 1: return t + "st";
+        case 2: return t + "nd";
+        case 3: return t + "rd";
+        default: return t + "th";
+      }
+    }
+
+  };
+
+  var TduController = function (oeSession) {
+    var vm = this;
+    vm.isLoading = false;
+
+    vm.loadProspectTdsp = function () {
+      vm.isLoading = true;
+      oeSession.setProspectTdsp();
+      vm.isLoading = false;
+    }
+
+    vm.loadCustomerEsiid = function () {
+      vm.isLoading = true;
+      oeSession.setCustomerEsiid();
+      vm.isLoading = false;
+    }
+
+    vm.loadCustomerTdsp = function () {
+      vm.isLoading = true;
+      oeSession.setCustomerTdsp();
+      vm.isLoading = false;
+    }
+
+    vm.loadEsiid = function (val) {
+      vm.isLoading = true;
+      oeSession.setProspectEsiid(val);
+      vm.isLoading = false;
+    }
+
+    vm.setTdsp = function (t) {
+      oeSession.setTdsp(t);
+    };
+
+    vm.setBillingAddressForm = function (same) {
+      $("#bill-address").prop('required', !same);
+      $("#bill-city").prop('required', !same);
+      $("#bill-state").prop('required', !same);
+      $("#bill-zip-code").prop('required', !same);
+    }
+
+  };
+
+  m.controller("CommonController", CommonController);
+  m.controller("ContactController", ContactController);
+  m.controller("ContractsController", ContractsController);
+  m.controller("FaqController", FaqController);
+  m.controller("GraphController", GraphController);
+  m.controller("HeroController", HeroController);
+  m.controller("LoginController", LoginController);
+  m.controller("PlansController", PlansController);
+  m.controller("SwapController", SwapController);
+  m.controller("TduController", TduController);
+
+}(angular.module("oe")));

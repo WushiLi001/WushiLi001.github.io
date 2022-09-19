@@ -1,0 +1,344 @@
+$(document).ready(function () {
+       /*----------------------------------------------*\
+              Toggle Accordion Active State
+       \*----------------------------------------------*/
+
+       //$('[data-accordion-target]').on("hide.bs.collapse show.bs.collapse", function(){
+       //     $(this).parents('.panel').toggleClass('is-active');
+       //});
+       /*----------------------------------------------*\
+           Off-Canvas Navigation Toggler
+       \*----------------------------------------------*/
+	/*$("#renewcontinue").on("click", function(e) {
+
+		$("#renewForm").submit();		
+		
+	});*/
+
+       var $primaryNav = $('[data-toggle-primary-navigation]'),
+              $wrapper = $('[data-toggle-wrapper]'),
+              $body = $('body'),
+              $mask = $('[data-toggle-mask]'),
+              $trigger = $('[data-toggle-navigation]');
+
+       var resetMenu = function(){
+              $body.removeClass("nav-is-open");
+              $wrapper.removeClass("is-closed");
+              $mask.removeClass("mask");
+              setTimeout(function(){
+                     $primaryNav.removeClass('is-open');
+              }, 500);
+              $(window).trigger('resize.primarynav');
+       };
+
+       $trigger.add($primaryNav).on('keydown', function(ev){
+              if (ev.which === 27) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          resetMenu();
+          $trigger
+              .attr('aria-expanded', 'false')
+              .focus();
+        };
+       });
+       $trigger.attr({
+              'aria-expanded': 'false',
+              'aria-label': 'Menu',
+              'aria-controls': 'menu'
+       });
+       $primaryNav.attr({
+              'aria-hidden': 'true',
+              'aria-labelledby': 'primary-navigation-toggle'
+       });
+       $trigger.on('click', function (e) {
+              e.preventDefault();
+              if($primaryNav.hasClass("is-open")) {
+                     setTimeout(function(){
+                           $primaryNav.removeClass('is-open');
+                     }, 500);
+              } else {
+                     $primaryNav.addClass('is-open');
+              }
+              $body.toggleClass("nav-is-open");
+              if ($wrapper.hasClass('is-closed')) {
+                     $wrapper.removeClass("is-closed");
+                     $trigger.attr('aria-expanded', 'false');
+                     $primaryNav.attr('aria-hidden', 'true');
+              } else {
+                     $wrapper.addClass("is-closed");
+                     $trigger.attr('aria-expanded', 'true');
+                     $primaryNav.attr('aria-hidden', 'false');
+              }
+              $mask.toggleClass("mask");
+              $(window).trigger('resize.primarynav');
+       });
+       $(window).on('resize.primarynav', function(){
+              var $footer = $('#footer');
+              if($footer.length === 0) {
+                     return false;
+              }
+              var $header_cta = $(".header-cta--primary");
+              var height = $footer.offset().top + $footer.height();
+
+              if($header_cta.is(":visible")) {
+                     height = height - $header_cta.height();
+              }
+              if($body.is('.nav-is-open')) {
+                     $primaryNav.height(height);
+                     $mask.height(height);
+              } else {
+                     setTimeout(function(){
+                           $primaryNav.removeAttr('style');
+                     }, 500);
+                     $mask.removeAttr('style');
+              }
+       });
+
+       /*----------------------------------------------*\
+              Modal Open and Close Functionality
+       \*----------------------------------------------*/
+       var $document = $(document);
+       
+       //Open modal
+       function modalOpen(e) {
+       	   e.preventDefault();
+       	   var $id = $(this).data('id');
+       	   $('[data-module="' + $id + '"]').addClass('active'); 
+       	   $('.mask--modal').addClass('active');
+       	   $('body').addClass('modal-on');
+       }
+       function modalOpenPlan(e) {
+           e.preventDefault();
+           var id = $(e.target).data('modal');
+           var modal = $('#' + id);
+           modal.addClass('active');
+           $('.mask--modal').addClass('active'); 
+           $('body').addClass('modal-on'); 
+    }
+       //Close modal
+       function modalClose(e) {
+              e.preventDefault();
+              var $id = $(e.target).closest('.modal');
+              //reset position to top over modal
+              $('html,body').scrollTop($id.offset().top);
+              $id.scrollTop(0);
+              //remove active classes
+              $id.removeClass('active');
+              $('.mask--modal').removeClass('active');
+              $('body').removeClass('modal-on');
+       }
+       $document.on('click', '[data-hook="modal-open"]', modalOpen);
+   	   $document.on('click', '[data-hook="modal-close"]', modalClose);
+       $('.js-modal-open').on('click', modalOpenPlan);
+       $('.js-modal-close').on('click', modalClose);
+
+       
+       $('#loginType').on('change', function(e){ 
+    		console.log('on change loaded...');
+    		if( $('#loginType :selected').text() === 'Last 5 of ESIID' ) { 
+    			$('#loginValue').attr('placeholder', '12345');  
+    		}; 
+    	});
+       
+       
+    	$('#renewcontinuebutton').on('click', function(e) {
+    	    e.preventDefault();
+    	    var ca = $('#ca_id').val();
+    		var loginValue = $('#loginValue').val();
+    		if (ca !="" && loginValue !="") {
+    			$('#loading-modal-link').click();
+	    	    $.ajax({
+	    	        url: '../../moving/getRenewplans',
+	    	        headers: { 
+	    		        Accept : "application/json"
+	    		    },
+	    	        type: 'post',
+	    	        contentType: 'application/x-www-form-urlencoded',
+	    	        data: $('#loginRenewForm').serialize(),
+	    	        success: function( data, textStatus, jQxhr ){
+	    	    
+			        if (typeof data.loginResult !=='undefined') {
+			        	$('#loading-modal-link-close').click();
+			            $('#modal-msg-link').click();
+		            
+			        } else if(typeof data.error !== 'undefined'){
+			        	$('#loading-modal-link-close').click();
+	    	        	$('#modal-system-erorr-link').click();
+			        } else {
+	    	    	 	$('#loginRenewForm').submit();
+			        }
+	    	        
+	    	        },
+	    	        error: function( jqXhr, textStatus, errorThrown ){
+	    	            console.log( errorThrown );
+	    	        }
+	    	    });
+    		}
+    	    
+    	    
+    	});
+    	 
+    	$('#movecontinuebutton').on('click', function(e) {
+    	    
+    		e.preventDefault();
+    	    var ca = $('#ca_id').val();
+    		var loginValue = $('#loginValue').val();
+    		if (ca !="" && loginValue !="") {
+    			
+    			$('#loading-modal-link').click();
+    			
+	    	    $.ajax({
+	    	        url: '../../moving/getcirromovingform',
+	    	        headers: { 
+	    		        Accept : "application/json"
+	    		    },
+	    	        type: 'post',
+	    	        contentType: 'application/x-www-form-urlencoded',
+	    	        data: $("#loginMoveForm").serialize(),
+	    	        success: function( data, textStatus, jQxhr ){
+		        	if (typeof data.PendingMove !== 'undefined') {
+		    	    	 	$('#loading-modal-link-close').click();
+		    	    	 	$("#moveoutdate").html(data.OE_LOGIN_FAIL_FORCED_MOVE);
+		    	        	$('#modal-force-move-out-link').click();
+		    	     } else if (data.loginResult === "false") {
+		    	    	 	$('#loading-modal-link-close').click();
+		    	            $('#modal-msg-link').click();
+		    	        
+		    	     } else if(typeof data.error !== 'undefined'){
+				        	$('#loading-modal-link-close').click();
+		    	        	$('#modal-system-erorr-link').click();
+				     } else {
+		    	    	 	$('#loginMoveForm').submit();
+		    	     }
+		    	     
+	    	        },
+	    	        error: function( jqXhr, textStatus, errorThrown ){
+	    	            console.log( errorThrown );
+	    	        }
+	    	    });
+    		}
+		});
+    	
+    	var planDetail;
+
+    	$('#continue').on('click', function(e) {
+    		
+    		var zip = $("#strZip").val();
+    		var length = zip.length;
+    		var street = $("#strtAddress").val();
+    		var city = $("#strCity").val();
+    	
+    		if (zip !="" && length >= 5 && street !="" && city !="" ) {
+    		
+    		
+    			e.preventDefault();
+    		    $('#loading-modal-link').click();
+    	    
+    		    $.ajax({
+    		        url: 'getcirromovingplans',
+    		        headers: { 
+    			        Accept : "application/json"
+    			    },
+    		        type: 'post',
+    		        contentType: 'application/x-www-form-urlencoded',
+    		        data: $('#cirroMovePlanForm').serialize(),
+    		        success: function( data, textStatus, jQxhr ){
+    		        		planDetail = data;
+    		        	if (planDetail.success == "Y") {
+    		        		$('#loading-modal-link').click();
+    		   				$('#cirroMovePlanForm')[0].submit();
+    		
+    		        	} else if(planDetail.Error == "SERVICE_ADDRESS_SYS_ERROR" || planDetail.Error == "SERVICE_ADDRESS_MISSING_APT") {
+    		        		$('#loading-modal-link-close').click();
+    		        		$('#modal-invalid-badress').click();
+    		        		console.log("invailite billling address")
+    		        	} else if(planDetail.Error == "SERVICE_ADDRESS_NO_TDSP") {
+    		        		$('#loading-modal-link-close').click();
+    		        		$('#modal-invalid-sadress').click();
+    		        		console.log("invailite service address")
+    		        	} else if (typeof planDetail.Tdsp !== 'undefined') {
+    		        		$( ".list-group-item" ).detach();
+    		        		$.each(planDetail.Tdsp.tdspData, function( index, value ) {
+    		        	
+    		        			$( ".list-group" ).append("<a href='#' class='list-group-item'>"+value.tdspName+"</a>");
+    		        			
+    		        		});
+    		        		$('#loading-modal-link-close').click();
+    		        		$('#modal-multiTdsp').click();
+    		        	
+    		        	}
+    		        	 
+    		        },
+    		        error: function( jqXhr, textStatus, errorThrown ){
+    		            console.log( errorThrown );
+    		        }
+    		    });
+    		}
+    	});
+    	
+
+
+    		$(document).on('click', '.list-group-item', function(e) {
+    			$('#tdsp-modal-link-close').click();
+    			$('#loading-modal-link').click();
+    			var tdsp = $(this).html();
+    			console.log(tdsp);
+    			$.each(planDetail.Tdsp.tdspData, function( index, value ) {
+    		    	if(tdsp == value.tdspName) {
+    		    		var $form = $('<form />', { action:"../signup/plans", method: 'POST' });
+    		   		 	$form.append( $('<input type="hidden" name="serviceAddress.tdspCodeCCS" value="'+value.tdspCodeCCS+'" />'));
+    		            $form.appendTo('body');  
+    		            $form.submit();
+    		    	}
+    	 
+    			});
+
+    		});
+    		
+   			
+    	
+});
+
+$(window).load(function () {
+  //Hook up popovers
+  $('[data-toggle="popover"]').popover();
+  //Set active Nav item
+  $('nav a').parents('li,ul').removeClass('active');
+  $('nav a[href="' + this.location.pathname + '"]').parents('li,ul').addClass('active');
+});
+
+function getQueryStringVariable(variable) {
+  var q = window.location.search.substring(1);
+  var v = q.split("&");
+  for (var i = 0; i < v.length; i++) {
+    var p = v[i].split("=");
+    if (p[0] == variable) {
+      return p[1];
+    }
+  }
+  return '';
+}
+
+//toggle address
+$( ".browse-options" ).click(function() {
+  $( ".showOfferWidth " ).toggle();
+       $(".plan-details-arrow").toggleClass( "plan-details-arrow-up" );
+});
+
+//slide Down offer address
+$("#zipCodeLink").click(function() {
+  $( ".showOfferWidth" ).show();
+  $(".plan-details-arrow").addClass( "plan-details-arrow-up" ).removeClass(".plan-details-arrow");
+});
+
+$('.expand-one').click(function(){
+    $('.content-one').slideToggle('slow');
+});
+//Energy Saving Tips
+$( ".internal-links a" ).click(function() {
+  var hrefId = $(this).attr('href');
+  var expandhref = $(hrefId + " a").attr('href');
+  
+  $(expandhref).addClass("in").attr("aria-expanded","true").removeAttr("style");
+});
+//Energy Saving Tips

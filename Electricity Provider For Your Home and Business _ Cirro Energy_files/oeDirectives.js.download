@@ -1,0 +1,168 @@
+(function (m) {
+  "use strict";
+
+  var cirroCompareGraph = function () {
+    return {
+      restrict: 'E',
+      scope: false,
+      templateUrl: function () {
+//        return '/GetResource.axd?resource_id=2&resource_code=COMPARE_GRAPH_TEMPLATE';
+        return '';
+      },
+      controller: "GraphController as vm"
+    };
+  };
+
+  var cirroContent = function () {
+    return {
+      restrict: 'E',
+      scope: true,
+      templateUrl: function (element, attributes) {
+//        return '/GetResource.axd?resource_id=2&resource_code=' + attributes.contentCode;
+    	  return '';
+      }
+    };
+  };
+
+  var cirroFaq = function (oeSession) {
+    return {
+      require: "cirroFaq",
+      scope: true,
+      restrict: 'E',
+      templateUrl: function () {
+//        return '/GetResource.axd?resource_id=2&resource_code=FAQ_TEMPLATE';
+    	  return '';
+      },
+      controller: "FaqController as vm",
+      link: function (scope, element, attributes, controller) {
+        var qs = {};
+        location.search.substr(1).split("&").forEach(function (item) {
+          var s = item.split("="),
+              k = s[0],
+              v = s[1] && decodeURIComponent(s[1]);
+          (k in qs) ? qs[k].push(v) : qs[k] = [v]
+        })
+        if (typeof qs.listHdrId != 'undefined') {
+          controller.listHdrId = qs.listHdrId[0];
+        } else {
+          controller.listHdrId = attributes.listHdrId;
+        }
+        controller.listType = attributes.listType;
+        controller.showDropdown = (attributes.showDropdown == 'true');
+        var id = parseInt(controller.listHdrId);
+        oeSession.getFaqData(id).then(function (data) {
+          controller.faq = data;
+          if (attributes.lead) {
+            controller.faq.lead = attributes.lead;
+          }
+          if (attributes.faqTitle) {
+            controller.faq.title = attributes.faqTitle;
+          }
+          if (attributes.subTitle) {
+            controller.faq.subTitle = attributes.subTitle;
+          }
+          controller.isLoading = false;
+        });
+      }
+    };
+  };
+
+  var cirroHero = function () {
+    return {
+      require: "cirroHero",
+      restrict: 'E',
+      scope: true,
+      templateUrl: function () {
+//        return '/GetResource.axd?resource_id=2&resource_code=HERO_TEMPLATE';
+    	  return '';
+      },
+      controller: "HeroController as vm",
+      link: function (scope, element, attributes, controller) {
+        if (attributes.image != '') {
+//          controller.heroBg = { "background-image": "url(/GetResource.axd?resource_id=3&resource_code=" + attributes.image + ")" };
+        }
+        controller.heroSize = attributes.size;
+        controller.heroTitle = attributes.title;
+        controller.heroSubTitle = attributes.subTitle;
+        controller.heroText= attributes.text;
+        if (attributes.useRibbon == "true") {
+          controller.heroRibbon = ' hero-ribbon';
+        }
+        if (attributes.inverseColor == "true") {
+          controller.inverseColor = ' darkgray-text';
+        }
+      }
+    };
+  };
+
+  var cirroImage = function () {
+    return {
+      restrict: 'E',
+      replace: true,
+      scope: false,
+      template: function (element, attributes) {
+//        return '<img src="/GetResource.axd?resource_id=3&resource_code=' + attributes.contentCode + '" alt="' + attributes.alt + '" style="' + attributes.style + '"/>';
+    	  return '';
+      }
+    };
+  };
+
+  var cirroMaintenanceWindow = function () {
+    return {
+      require: "cirroMaintenanceWindow",
+      restrict: 'E',
+      scope: false,
+      templateUrl: function () {
+        //return '/GetResource.axd?resource_id=2&resource_code=MAINTENANCE_WINDOW_TEMPLATE';        
+        return '/en_US/GetResourceMaintenanceWindow';
+      },
+      controller: "TduController as vm",
+      link: function (scope, element, attributes, controller) {
+        controller.style = attributes.style;
+      }
+    };
+  };
+
+  var cirroSupportTicket = function () {
+    return {
+      require: "cirroSupportTicket",
+      restrict: 'E',
+      scope: true,
+      templateUrl: function () {
+//        return '/GetResource.axd?resource_id=2&resource_code=SUPPORT_TICKET_TEMPLATE';
+    	  return '';
+      },
+      controller: "ContactController as vm",
+      link: function (scope, element, attributes, controller) {
+        controller.contactForm.department = attributes.dept;
+        controller.hideDepartment = (attributes.hidedept === 'true');
+      }
+    };
+  };
+
+  var ccpaRequest = function () {
+	  return {
+	    require: "ccpaRequest",
+	    restrict: 'E',
+	    scope: true,
+	    templateUrl: function () {
+//	      return '/GetResource.axd?resource_id=2&resource_code=CCPA_REQUEST_TEMPLATE';
+	    	return '';
+	    },
+	    controller: "ContactController as vm",
+	    link: function (scope, element, attributes, controller) {
+	        controller.showRequestType = (attributes.showReqType === 'true');	        
+	    }
+	 };
+  };
+
+  m.directive("cirroCompareGraph", cirroCompareGraph);
+  m.directive("cirroContent", cirroContent);
+  m.directive("cirroFaq", cirroFaq);
+  m.directive("cirroHero", cirroHero);
+  m.directive("cirroImage", cirroImage);
+  m.directive("cirroMaintenanceWindow", cirroMaintenanceWindow);
+  m.directive("cirroSupportTicket", cirroSupportTicket);
+  m.directive("ccpaRequest", ccpaRequest);
+
+}(angular.module("oe")));

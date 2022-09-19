@@ -1,0 +1,817 @@
+(function (module) {
+
+  var oeSession = function ($rootScope, $http, $window) {
+    var rs = $rootScope;
+
+    //#JSON Desfaults
+    var Customer = function () {
+      return { billingAddress: null, contractId: "", contractAccountId: "", contractAccountName: "", checkDigit: "", currentPlan: null, email: "", isLoggedIn: false, isSwapAcknowledged: false, languageCode: "E", newServiceAddress: null, offerId: "", redirectTo: "", service: "renew", serviceAddress: { tdspCodeCCS: "", tdspName: "", address: "", city: "", state: "TX", zip: "", zipComplete: "", apartNum: "", country: "US", esid: "" } };
+    }
+    var ContactForm = function (dept) {
+      return { department: dept, contactName: "", contactEmail: "", contactPhone: "", city: "", howHear: "", currentBillAmt: "", currentProvider: "", comments: "" };
+    }
+    var CcpaRequestForm = function (reqType) {
+        return { requestType: reqType, firstName: "", lastName: "", contactEmail: "", contactPhone: "", address1: "", address2: "", city: "", state: "", zip: "", country: "", contactTime:"" };
+    }   
+    var UpdatePreferencesForm = function () {
+        return { firstName: "", lastName: "", businessName: "", addressLine1: "", apartment: "", city: "", state: "TX", zipcode: "" };
+    }
+    var LoginInfo = function () {
+      return { loginType: "", loginValue: "", loginDay: "", loginMonth: "", loginErrorCode: "", loginRedirect: "", loginService: "", };
+    }
+    var MaintenanceWindow = function () {
+      return { title: "", subTitle: "", description: null, startTime: null, endTime: null, isOnline: true };
+    }
+    var Prospect = function () {
+      return { brokerId: "", serviceAddress: { tdspCodeCCS: "", tdspName: "", address: "", city: "", state: "TX", zip: "", zipComplete: "", apartNum: "", country: "US", esid: "" }, promoCode: "", offerId: "", prospectId: "",prospectPage:""};
+    }
+    var ServiceAddress = function () {
+      return { tdspCodeCCS: "", tdspName: "", address: "", city: "", state: "TX", zip: "", zipComplete: "", apartNum: "", country: "US", esid: "" };
+    }
+    var SecurityQuestions = function () {
+      return [{ type: "dob", text: "Date Of Birth", pattern: "", placeholder: "" }, { type: "ssn", text: "Last 4 of SSN", pattern: "\\d{4}", placeholder: "1234" }, { type: "dln", text: "Last 4 of Drivers License", pattern: "\\d{4}", placeholder: "1234" }, { type: "esi", text: "Last 5 of ESIID", pattern: "\\d{5}", placeholder: "12345" }, { type: "oam", text: "My Cirro Password", pattern: "^([\S]{3,38})$", placeholder: "My Cirro Password" }];
+    }
+    //#JSON Desfaults
+    //#Set Server generated JSON
+    if (typeof oeERROR_MSG != 'undefined') {
+      rs.errorMsg = oeERROR_MSG;
+    } else {
+      rs.errorMsg = '';
+    }
+    if (typeof oeSECURITY_QUESTIONS != 'undefined') {
+      rs.securityQuestions = oeSECURITY_QUESTIONS;
+    } else {
+      rs.securityQuestions = new SecurityQuestions();
+    }
+    if (typeof rs.customer == 'undefined' && typeof oeCUSTOMER != 'undefined') {
+      rs.customer = oeCUSTOMER;
+    } else {
+      rs.customer = new Customer();
+    }
+    if (typeof rs.maintenanceWindow == 'undefined' && typeof oeMAINTENANCE_WINDOW != 'undefined') {
+      rs.maintenanceWindow = oeMAINTENANCE_WINDOW;
+    } else {
+      rs.maintenanceWindow = new MaintenanceWindow();
+    }
+    if (typeof rs.plans == 'undefined' && typeof oePLANS != 'undefined') {
+      rs.plans = oePLANS;
+    } else {
+      rs.plans = {};
+    }
+    if (typeof rs.contracts == 'undefined' && typeof oeCONTRACTS != 'undefined') {
+      rs.contracts = oeCONTRACTS;
+    } else {
+      rs.contracts = {};
+    }
+    if (typeof rs.contract == 'undefined' && typeof oeCONTRACT != 'undefined') {
+      rs.contract = oeCONTRACT;
+    } else {
+      rs.contract = {};
+    }
+    if (typeof rs.plan == 'undefined' && typeof oeSELECTED_PLAN != 'undefined') {
+      rs.plan = oeSELECTED_PLAN;
+    } else {
+      rs.plan = {};
+    }
+    if (typeof rs.prospect == 'undefined' && typeof oePROSPECT != 'undefined') {
+      rs.prospect = oePROSPECT;
+    } else {
+      rs.prospect = new Prospect();
+    }
+    //#Set Server generated JSON
+    //#Private Functions
+       var save = function(input,url,msg,redir)
+  {
+	  showTdspModal(false);
+	  setWorking(msg,msg!='');
+	  var $form=$('<form/>',{action:redir,method:'POST'});
+	  $.each(Object.getOwnPropertyNames(input),function(i,key){
+		  if(key!="serviceAddress")
+			  $form.append($('<input type="hidden" name="'+key+'" value="'+input[key]+'" />'));
+		  });
+	  
+	  $.each(Object.getOwnPropertyNames(input.serviceAddress),function(i,key){
+		  $form.append($('<input type="hidden" name="serviceAddress.'+key+'" value="'+input.serviceAddress[key]+'" />'));
+		  });
+	  console.log("$form=",$form.html())
+	  $form.appendTo('body');
+	  $form.submit();
+  }
+
+    var copyAddress = function (t, sa) {
+    	
+  	      sa.address = (!!t.serviceAddress.strStreetNum ? t.serviceAddress.strStreetNum + ' ' : '') + isNull(t.serviceAddress.strStreetName,'');
+  	      sa.apartNum = isNull(t.serviceAddress.strApartNum, '');
+  	      sa.city = isNull(t.serviceAddress.strCity, '');
+  	      sa.state = isNull(t.serviceAddress.strState, '');
+  	      sa.zip = isNull(t.serviceAddress.strZip, '');
+  	      sa.zipComplete = isNull(t.serviceAddress.strZipComplete, '');
+  	      sa.esid = isNull(t.esid, '');
+
+    }
+    function isNull(str, r) {
+      return (str == null ? r : str);
+    }
+    function htmlEncode(html) {
+      return document.createElement('a').appendChild(document.createTextNode(html)).parentNode.innerHTML;
+    };
+    var setTdspList = function (t) {
+      rs.tdspList = t;
+    }
+    var showTdspModal = function (visible) {
+      if (visible) {
+        $('#loading-modal-link-close').click();
+        $('#tdsp-modal-link').click();
+      } else {
+        $('#tdsp-modal-link-close').click();
+        $('#loading-modal-link-close').click();
+      }
+    }
+    
+    var showInvalidZip = function (visible) {
+        if (visible) {
+        	$('#loading-modal-link-close').click();
+        	$('#invaild-zip-modal-link').click();
+        }  else {
+            $('#invaild-zip-modal-link-close').click();
+            setWorking('Finding Distribution Provider, please wait...', false);
+      }
+    }
+    
+    var showPTCInvalidZip = function (visible) {
+        if (visible) {
+        	$('#loading-modal-link-close').click();
+        	$('#ptc-invaild-zip-modal-link').click();
+        }  else {
+            $('#ptc-invaild-zip-modal-link-close').click();
+            setWorking('Finding Distribution Provider, please wait...', false);
+      }
+    }
+    
+    var systemError = function (visible) {
+        if (visible) {
+        	$('#loading-modal-link-close').click();
+        	$('#modal-system-erorr-link').click();
+        }  else {
+            $('#loading-modal-link').click();
+          
+      }
+    }
+    var showNoZip = function (visible) {
+        if (visible) {
+        	$('#loading-modal-link-close').click();
+        	$('#no-zip-modal-link').click();
+        }  else {
+            $('#no-zip-modal-link-close').click();
+            setWorking('Finding Distribution Provider, please wait...', false);
+      }
+    }
+    
+    //#Private Functions
+    //#Public Functions
+    var getCustomer = function () {
+      return rs.customer;
+    }
+    var getCurrentTdsp = function () {
+      return rs.prospect.serviceAddress.tdspCodeCCS;
+    }
+    var getFaqData = function (id) {
+      return $http.get("/api/faq/" + id).then(function (response) {
+        return response.data;
+      });
+    }
+    var getGraphData = function () {
+      return $http.get("/api/graph").then(function (response) {
+        return response.data;
+      });
+    }
+    var getModalInfo = function () {
+      return rs.modalInfo;
+    }
+    var getSecurityQuestion = function (name) {
+      for (var i = 0, len = rs.securityQuestions.length; i < len; i++) {
+        if (rs.securityQuestions[i].type == name) {
+          return rs.securityQuestions[i];
+        }
+      }
+    }
+    var submitContactUs = function (f, url) {
+      setWorking('', true);
+     
+      $http({
+    	    method: 'POST',
+    	    url: url,
+    	    data: $.param(f),
+    	    headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
+    	})
+          .then(function (response) { // Success
+        	  $("#loading-modal-link").hide(); 
+        	  $("#js-infoModal-Msg").show();
+            showModalInfo(response.data);
+          }, function (error) {       // Failure
+        	  $("#loading-modal-link").hide(); 
+        	  $("#js-infoModal-Msg").show();
+            showModalInfo(error.data);
+          });
+    }
+    
+    var submitCcpaRequest = function (f) {
+        setWorking('Requesting, please wait...', true);
+        $http.post("/api/ccpa-contact", f)
+            .then(function (response) { // Success
+                showModalInfo(response.data);
+            }, function (error) {       // Failure
+                showModalInfo(error.data);
+            });
+    }
+    
+    var submitUpdatePreference = function (f, url) {
+        setWorking('', true);
+        $http({
+    	    method: 'POST',
+    	    url: url,
+    	    data: $.param(f),
+    	    headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
+    		})
+            .then(function (response) { // Success
+           	 	console.log(response.data);
+                showModalInfo(response.data);
+            }, function (error) {       // Failure
+                showModalInfo(error.data);
+            });
+    }
+    var setContract = function (contract) {
+      setWorking('Selecting Location, please wait...', true);
+      $http.post("/api/contract", contract)
+         .then(function (response) { // Success
+           window.location = response.data.redirectTo;
+         }, function (error) {       // Failure
+           showModalInfo(error.data);
+         });
+    }
+    var setSwap = function () {
+      if (rs.customer.isLoggedIn == false) {
+        showModalInfo(oeOE_SWAP_LOGIN_FAILURE);
+        return false;
+      }
+      if (rs.customer.isSwapAcknowledged == false) {
+        showModalInfo(oeOE_SWAP_TERMS_FAILURE);
+        return false;
+      }
+      setWorking('Submitting Renewal, please wait...', true);
+      document.getElementById('chkisSwapAcknowledged').setAttribute("checked", "checked");
+      var capture = { captureForm: htmlEncode(document.getElementById('renewForm').innerHTML), email: rs.customer.email };
+      $http.post("/api/renew", capture)
+         .then(function (response) { // Success
+           showModalInfo(response.data);
+         }, function (error) {       // Failure
+           showModalInfo(error.data);
+         });
+    }
+    var setPlan = function (t, plan) {
+      showPlanModal(false);
+      if (plan != null) {
+        setSelectedPlan(plan);
+      }
+      switch (t) {
+        case "signup":
+            save(rs.plan, "/api/plan?t=signup", "Saving selection, please wait...", "/addSignup.aspx?fromLP=" + plan.strAvgPricekwh);
+          break;
+        case "move":
+          save(rs.plan, "/api/plan?t=move", "Saving selection, please wait...", "/addTransfer.aspx");
+          break;
+        case "renew":
+          save(rs.plan, "/api/plan?t=renew", "Saving selection, please wait...", "/renew/plan");
+          break;
+        case "keep":
+          save(rs.customer.currentPlan, "/api/plan?t=keep", "Saving selection, please wait...", "/addTransfer.aspx");
+          break;
+        default:
+      }
+    }
+    var setLogin = function (li) {
+      li.loginService = rs.customer.service;
+      setWorking('Verifying Info, please wait...', true);
+      var url = "/api/login/" + rs.customer.contractAccountId;
+      $http.post(url, li)
+         .then(function (response) { // Success
+           rs.customer = response.data;
+           if (rs.customer.redirectTo.indexOf('contracts') > 1) {
+             setWorking('Loading Contracts, please wait...', true);
+           } else {
+             setWorking('Loading Plans, please wait...', true);
+           }
+           window.location = rs.customer.redirectTo;
+         }, function (error) {       // Failure
+           showModalInfo(error.data);
+         });
+
+    }
+
+    
+    var setProspectId = function (f, url) {
+    	if (f == "reset") {
+            rs.prospect.serviceAddress = new ServiceAddress();
+            rs.prospect.prospectId = "";
+            var oeDM_OFFER_WRONG_ADDRESS = {"title":"Sorry!","message":"Please call the phone number listed on your letter (and also listed on the webpage you entered).  Be sure to have the special code available for a customer service representative.","severity":"","showOK":true,"showCancel":false,"textOK":"OK","textCancel":"Cancel","redirectOK":"","redirectCancel":""};
+            showModalInfo(JSON.stringify(oeDM_OFFER_WRONG_ADDRESS));
+          }
+    	else{
+    	 setWorking('', true);
+        $http({
+      	    method: 'POST',
+      	    url: url,
+      	    data: $.param(f),
+      	    headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
+      	})
+            .then(function (response) { // Success
+            	rs.prospect = response.data;
+            	rs.prospect["prospectPage"] = window.location.href.split("/")[window.location.href.split("/").length-1].replace("?","")+"plan";
+            	setWorking('Please wait...', false);
+            	//showDmModal(true);
+            	if(response.data.NextView =="Error"){
+            		 var oeDM_OFFER_WRONG_ADDRESS = {"title":"Sorry!","message":"Not a Valid Code","severity":"","showOK":true,"showCancel":false,"textOK":"OK","textCancel":"Cancel","redirectOK":"","redirectCancel":""};
+            		showModalInfo(JSON.stringify(oeDM_OFFER_WRONG_ADDRESS));
+            	}
+            	else{
+            	showDmModal(true);
+            	}
+            }, function (error) {       // Failure
+              showModalInfo(error.data);
+            });
+    }
+      }
+    var setProspectEsiid = function (val) {
+    	//version 1
+        setWorking('Validating Address, please wait...', true);
+        setTdspList([]);
+        //var url = "/api/esi";
+        	/*  var url = window.location.origin+"/en_US/oeflow/ajax"; 
+        	  
+        	  $http.post(url, rs.prospect)
+              .then(function (response) { // Success
+                var tlist = response.data;
+                copyAddress(response.data, rs.prospect.serviceAddress);
+                setTdspList(tlist.tdspData);
+                if (tlist.tdspData.length > 1) {
+                  showTdspModal(true);
+                } else {
+                    setWorking('Loading Plans, please wait...', true);
+                    if (!!val && !tlist.hasFlatBillPlans) {
+                        showModalInfo(tlist.noFlatBillMessage);
+                    } else {
+                        window.location = "/signup/plans";
+                    }
+                }
+                , function (error) {       // Failure
+                    if (error.status == '403')
+                        document.location = error.data.redirectOK;
+                    else {
+                        setTdspList([]);
+                        showModalInfo(error.data);
+                    }
+                }); 
+              });
+        }
+        else{*/
+        	//33
+        	//rs.prospect.serviceAddress.zip =
+        	//var url  = buildUrl("/enroll/getTdspbyprospect");//+ rs.prospect.serviceAddress.zip;
+        sessionStorage.setItem('zipcodeentered', rs.prospect.serviceAddress.zip)
+        var url  = "/enroll/getTdspbyprospect";
+        	$http({
+                url:url,
+                method: "POST",
+                data: JSON.stringify( rs.prospect)
+            })
+            .then(function(response) {
+            	//alert("test-success");
+            	 setWorking('Loading Plans, please wait...', true);
+            	 var tlist = response.data;
+                if(tlist.serviceAddress != null){
+            	 copyAddress(response.data, rs.prospect.serviceAddress);
+                }
+            	 setTdspList(tlist.tdspData);
+                 if (tlist.tdspData.length > 1) {
+                   showTdspModal(true);
+                 } else {
+                    // setWorking('Loading Plans, please wait...', true);
+                     if(tlist.plans.flatBillPlans.length === 0 ){
+                    	 commonClickActionAnalyticsFromCode('SimplyFlatPlanEligibilty','Top Banner','Button','Simply Flat Plan Address Not Eligible', 'always', 'SimplyFlatPlanEligibilty', '', '');                    	 
+                		 var mi = '{ "message" :"Unfortunately, the Simply Flat plan is not currently available for the address you provided. Please call us at 1.800.MY.CIRRO (1.800.692.4776) for other options.", "showCancel":true }';
+                		  showModalInfo(mi);
+                		
+                		  return;
+                	 }else {
+                		 commonClickActionAnalyticsFromCode('SimplyFlatPlanEligibilty','Top Banner','Button','Simply Flat Plan Address Eligible', 'always', 'SimplyFlatPlanEligibilty', '', '');
+                	 }
+                    // window.location = "/en_US/signup/plans";
+                     if(tlist != null) {
+                     	rs.prospect.serviceAddress.tdspCodeCCS = tlist.tdspData[0].tdspCodeCCS;
+                     	rs.prospect.serviceAddress.tdspName = tlist.tdspData[0].tdspName;
+                     	rs.prospect.serviceAddress.esid = response.data.esid;
+                     	rs.prospect.billType ="flatbill";
+                     	save(rs.prospect, "./signup/getPlans", "Loading Plans, please wait...", "/signup/plans");
+                     	/*if(window.location.pathname.split("/").length <= 3){
+                     		save(rs.prospect, "./signup/getPlans", "Loading Plans, please wait...", "./signup/plans");
+                    	}else{
+                    		save(rs.prospect, "./signup/getPlans", "Loading Plans, please wait...", "../signup/plans");
+                    	}*/
+                     	 
+                     }
+                     
+                 }
+                    // success
+            }, 
+            function (error) {
+            	//alert("test-Error");// Failure
+                if (error.status == '403')
+                    document.location = error.data.redirectOK;
+                else {
+                    setTdspList([]);
+                    showModalInfo(error.data);
+                }
+            });
+        	
+           /* var url = window.location.origin+"/en_US/oeflow/ajax/"+ rs.prospect.serviceAddress.zip;
+            $http.post(url)
+            .then(function (response) { // Success
+              var tlist = response.data;
+              copyAddress(response.data, rs.prospect.serviceAddress);
+              setTdspList(tlist.tdspData);
+              if (tlist.tdspData.length > 1) {
+                showTdspModal(true);
+              } else {
+                  setWorking('Loading Plans, please wait...', true);
+                  window.location = "/en_US/signup/plans";
+                  if (!!val && !tlist.hasFlatBillPlans) {
+                      showModalInfo(tlist.noFlatBillMessage);
+                  } else {
+                      window.location = "/en_US/signup/plans";
+                  }
+              }
+            }, function (error) {       // Failure
+                if (error.status == '403')
+                    document.location = error.data.redirectOK;
+                else {
+                    setTdspList([]);
+                    showModalInfo(error.data);
+                }
+            });
+            }*/
+
+  }
+    
+    var buildUrl = function(path){
+    	var localizationName =window.location.pathname.split("/")[1];
+    	if(localizationName == "" || localizationName == "null"){
+    		localizationName = "en_US";
+    	}
+    	var baseUrl = window.location.protocol+"//"+window.location.host+"/"+localizationName;
+    	var url = baseUrl + path;
+    	return url;
+    }
+    
+    var getUrlPrefix = function(){
+    	var urlPrefix ="";
+    	var pathParamCount = window.location.pathname.split("/").length;
+    	if(pathParamCount <= 3){
+    		
+    		urlPrefix =(pathParamCount==2)?"/":"./";//+ rs.prospect.serviceAddress.zip;
+    	}else{
+    		urlPrefix ="../";//+ rs.prospect.serviceAddress.zip;
+    	}
+    	//alert("urlPrefix="+urlPrefix+"=");
+    	return urlPrefix;
+    }
+    
+    
+    var setProspectTdsp = function () {
+        rs.oeType = "signup";
+        setWorking('Finding Distribution Provider, please wait...', true);
+       
+        
+        if(rs.prospect.serviceAddress.zip)
+    	{
+       var url ="/enroll/getTdsp/"+ rs.prospect.serviceAddress.zip;
+    	}
+        else
+    	{
+     	var serviceAddresszip = sessionStorage.getItem('zipcodeentered')
+    	var url ="/enroll/getTdsp/"+ serviceAddresszip;
+    	}
+        
+        var promoCode=$("#promo_code").val();
+        var tdspCode=$("#tdsp_code").val();
+        var fromLP=$("#fromLP").val();
+        var zipCode=$("#txtZipcode").val();
+        $http.post(url)
+          .then(function (response) { // Success
+            var tlist = response.data;
+            var tdspZipError = 'false';
+            if(typeof response.data !== 'undefined') {
+	            setTdspList(tlist);
+	            	if ( (tlist.ErrorDetails == 'Not a Valid Zip Code') || (tlist.resultDescription == 'Error while getting TDSP code from Database')) {
+	            		if(fromLP === 'ptc') { 	
+	            			showPTCInvalidZip(true);
+	            		} else {
+	            		showInvalidZip(true);
+	            		analyticsDynamicLoad('Page', 'sales:shop:noservicezone', '', '', '', '');
+	            		}
+		            } else {
+		            	if(fromLP === 'ptc') { 		            		
+		            		if(tlist.tdspData !== null) {
+		            			var len = tlist.tdspData.length;
+		            			var tdspArray=[];
+	            				if ( len > 1) {
+	            					for(var i=0;i<len;i++){	            		
+	            						var currTdsp= tlist.tdspData[i].tdspCodeCCS;
+	            						tdspArray[i]=currTdsp;
+	            						if(currTdsp===tdspCode){
+	            							rs.prospect.serviceAddress.tdspCodeCCS =  tlist.tdspData[i].tdspCodeCCS;
+		            						rs.prospect.serviceAddress.tdspName =  tlist.tdspData[i].tdspName;
+	            						} 
+	            					}
+		            				if(!(tdspArray.includes(tdspCode))){
+		            					tdspZipError='true';	
+		            				}
+	            				} else {
+	            					if(tlist != null) {
+	            						var tdspCodeCCS= tlist.tdspData[0].tdspCodeCCS;
+	            						if(tdspCodeCCS===tdspCode){
+	            						rs.prospect.serviceAddress.tdspCodeCCS = tlist.tdspData[0].tdspCodeCCS;
+	            						rs.prospect.serviceAddress.tdspName = tlist.tdspData[0].tdspName;
+	            						} else {
+	            							tdspZipError='true';
+	            						}
+	            					}            	
+	            				}
+		            		}
+     		                if(tdspZipError==='true'){
+     		                	showTdspZipUnmatchError(true);
+     		                } else {
+     		                	rs.prospect.billType ="signupbill";
+     		                	rs.prospect.promoCode=promoCode;    		        
+     		                	var url = "/signup/plans?tdsp_code="+tdspCode+"&promo_code="+promoCode+"&fromLP=ptc";
+     		                	save(rs.prospect, "./signup/getPlans", "Loading Plans, please wait...", url);
+     		                }     		                	     		               
+		            	} else {	
+		            			if(tlist.tdspData !== null) {
+		            				if (tlist.tdspData.length > 1) {
+		            					showTdspModal(true);
+		            					analyticsDynamicLoad('Page', 'sales:shop:choosetdsp', '', '', '', '');
+		            				} else {
+		            					setWorking('Loading Plans, please wait...', true);
+		            					if(tlist != null) {
+		            						rs.prospect.serviceAddress.tdspCodeCCS = tlist.tdspData[0].tdspCodeCCS;
+		            						rs.prospect.serviceAddress.tdspName = tlist.tdspData[0].tdspName;
+		            						rs.prospect.billType ="signupbill";
+		            						
+		            						if(!rs.prospect.serviceAddress.zip)
+	            							{
+	            							var serviceAddresszip = sessionStorage.getItem('zipcodeentered');
+	            							rs.prospect.serviceAddress.zip = serviceAddresszip;
+	            							rs.prospect.serviceAddress.state = 'TX';
+	            							}
+		            						
+		            						
+		            						save(rs.prospect, "./signup/getPlans", "Loading Plans, please wait...", "/signup/plans");
+		            					}
+	            	
+		            				}
+	            
+		            			}            	
+            		
+		            	}
+		            }
+	            	if (typeof tlist.error !== 'undefined') {
+	            		systemError(true);
+	            	}
+	            	
+            }
+        }, function (error) {       // Failure
+            if (error.status == '403')
+                document.location = error.data.redirectOK;
+            else if (error.status == '404')
+            	showNoZip(true);
+            else {
+                setTdspList([]);
+                rs.prospect.serviceAddress.zip = '';
+                showModalInfo(error.data);
+            }
+        })
+        .finally(function () {
+          vm.isLoading = false;
+        });
+    }
+       
+       
+    var setCustomerTdsp = function () {
+      rs.oeType = "move";
+      setWorking('Finding Distribution Provider, please wait...', true);
+      var url = "/api/tdsp/" + rs.customer.newServiceAddress.zip;
+      $http.get(url)
+        .then(function (response) { // Success
+          var tlist = response.data;
+          setTdspList(tlist);
+          if (tlist.length > 1) {
+            showTdspModal(true);
+          } else {
+            //setTdsp(tlist[0]);
+            setWorking('Loading Plans, please wait...', true);
+            window.location = "/move/plans";
+          }
+        }, function (error) {       // Failure
+            if (error.status == '403')
+                document.location = error.data.redirectOK;
+            else {
+                setTdspList([]);
+                rs.customer.newServiceAddress.zip = '';
+                showModalInfo(error.data);
+            }
+        })
+        .finally(function () {
+          vm.isLoading = false;
+        });
+    }
+    var setCustomerEsiid = function () {
+      //rs.oeType = "move";
+      setWorking('Validating Address, please wait...', true);
+      setTdspList([]);
+      var url = "/api/esi";
+      //var url = "/api/esi/" + rs.customer.newServiceAddress.zip + "?address=" + encodeURIComponent(rs.customer.newServiceAddress.address) + "&city=" + encodeURIComponent(rs.customer.newServiceAddress.city) + "&apartNum=" + encodeURIComponent(rs.customer.newServiceAddress.apartNum);
+      $http.post(url, rs.customer)
+        .then(function (response) { // Success
+          var tlist = response.data.tdspData;
+          copyAddress(response.data, rs.customer.newServiceAddress);
+          setTdspList(tlist);
+          if (tlist.length > 1) {
+            showTdspModal(true);
+          } else {
+            setWorking('Loading Plans, please wait...', true);
+            window.location = "/move/plans";
+          }
+        }, function (error) {       // Failure
+            if (error.status == '403')
+                document.location = error.data.redirectOK;
+            else {
+                setTdspList([]);
+                showModalInfo(error.data);
+            }
+        });
+    }
+    var setCustomerVerify = function (li) {
+      li.loginService = rs.customer.service;
+      setWorking('Verifying Info, please wait...', true);
+      var url = "/renew/renewplanverify";
+      $http.post(url, li)
+         .then(function (response) { // Success
+           setWorking('', false);
+           rs.customer = response.data;
+         }, function (error) {       // Failure
+           showModalInfo(error.data);
+         });
+
+    }
+    var setSelectedPlan = function (p) {
+      rs.plan = p;
+    }
+    var setTdsp = function (t) {
+      rs.tdspList = t;
+      if (rs.oeType == "move") {
+        rs.customer.newServiceAddress.tdspCodeCCS = t.tdspCodeCCS;
+        rs.customer.newServiceAddress.tdspName = t.tdspName;
+        save(rs.customer, "/api/customer", "Loading Plans, please wait...", "/move/plans");
+      } else { 
+          var promoCode=$("#promo_code").val();
+          var tdspCode=$("#tdsp_code").val();
+          var fromLP=$("#fromLP").val();
+    	  var zipCode=$("#txtZipcode").val();
+          if(fromLP==='ptc'){    		
+    		rs.prospect.serviceAddress.tdspCodeCCS=tdspCode;
+         	rs.prospect.promoCode=promoCode;
+         	rs.prospect.txtZipcode=zipCode;
+         	var getPlansPTCUrl= "/signup/plans?tdsp_code="+tdspCode+"&promo_code="+promoCode+"&fromLP=ptc";
+         	save(rs.prospect, "./signup/getPlans", "Loading Plans, please wait...", getPlansPTCUrl);       
+      	  } else{
+      	    rs.prospect.serviceAddress.tdspCodeCCS = t.tdspCodeCCS;
+             rs.prospect.serviceAddress.tdspName = t.tdspName;
+             save(rs.prospect, "/api/prospect", "Loading Plans, please wait...", "/signup/plans");
+         }
+      }
+    }
+    var setWorking = function (txt, visible) {
+      rs.loadingMsg = txt;
+      if (visible) {
+        $('#loading-modal-link').click();
+      } else {
+        $('#loading-modal-link-close').click();
+      }
+    }
+    var showModalInfo = function (mi) {
+      rs.modalInfo = JSON.parse(mi);
+      $('#loading-modal-link-close').click();
+      $('#modal-msg-link').click();
+    }
+    var showPlanModal = function (visible) {
+      if (visible) {
+        $('#plan-modal-link-open').click();
+      } else {
+        $('#plan-modal-link-close').click();
+      }
+    }
+    var showDmModal = function (visible) {
+      if (visible) {
+        $('#modal-dm-link').click();
+      } else {
+        $('#modal-dm-link-close').click();
+      }
+    }
+    
+    
+    $window.onload = function(){
+    	var PromoZipUnmatchError=$("#promoZipUnmatchError").val();
+    	if (PromoZipUnmatchError==='true') {
+    		$('#loading-modal-link-close').click();
+        	$('#promo-zip-unmatch-modal-link').click();        	
+        }  else {
+            $('#promo-zip-unmatch-modal-link-close').click();
+            $('#loading-modal-link-close').click();
+      }
+    }
+    var showTdspZipUnmatchError = function(tdspZipUnmatchError){
+    	if (tdspZipUnmatchError) {
+    		 $('#tdsp-zip-unmatch-modal-link').click();
+    	}else {    		 
+    		$('#tdsp-zip-unmatch-modal-link-close').click();
+    		$('#loading-modal-link-close').click();
+        }
+    }
+    
+    $( ".tdspZipUnmatchSubmit" ).click(function() {
+    	var promoCode=$("#promo_code").val();
+    	var tdspCode=$("#tdsp_code").val();
+    	$('#tdsp-zip-unmatch-modal-link-close').click();
+    	rs.prospect.billType ="signupbill";
+     	rs.prospect.promoCode=promoCode;    		        
+     	var url = "/signup/plans?tdsp_code="+tdspCode+"&promo_code="+promoCode+"&fromLP=ptc";
+     	save(rs.prospect, "./signup/getPlans", "Loading Plans, please wait...", url);
+    });
+    //#Public Functions
+    var getDirectMailProspect = function(input,url){
+    	var prospectPage = input["prospectPage"] ||"smartplan";
+    	   var $form = $('<form />', { action: prospectPage, method: 'POST' });
+    	   $.each(Object.getOwnPropertyNames(input),function(i,key){
+    		   if(key!="serviceAddress")
+    		   $form.append( $('<input type="hidden" name="'+key+'" value="'+input[key]+'" />'));
+    	   });
+    	   $.each(Object.getOwnPropertyNames(input.serviceAddress),function(i,key){
+    		   
+    		   $form.append( $('<input type="hidden" name="serviceAddress.'+key+'" value="'+input.serviceAddress[key]+'" />'));
+    	   });
+    	   console.log("$form=",$form.html())
+    	   $form.appendTo('body');  
+    	   $form.submit();
+  
+
+    	
+    }
+
+    return {
+      LoginInfo: LoginInfo,
+      ServiceAddress: ServiceAddress,
+      ContactForm: ContactForm,
+      CcpaRequestForm: CcpaRequestForm,
+      UpdatePreferencesForm: UpdatePreferencesForm,
+      getCustomer: getCustomer,
+      getCurrentTdsp: getCurrentTdsp,
+      getFaqData: getFaqData,
+      getGraphData: getGraphData,
+      getModalInfo: getModalInfo,
+      getSecurityQuestion: getSecurityQuestion,
+      setLogin: setLogin,
+      setPlan: setPlan,
+      setContract: setContract,
+      setSwap: setSwap,
+      setSelectedPlan: setSelectedPlan,
+      setProspectEsiid: setProspectEsiid,
+      setProspectId: setProspectId,
+      setProspectTdsp: setProspectTdsp,
+      setCustomerTdsp: setCustomerTdsp,
+      setCustomerEsiid: setCustomerEsiid,
+      setCustomerVerify: setCustomerVerify,
+      setTdsp: setTdsp,
+      setWorking: setWorking,
+      submitContactUs: submitContactUs,
+      submitCcpaRequest: submitCcpaRequest,
+      submitUpdatePreference: submitUpdatePreference,
+      showModalInfo: showModalInfo,
+      showPlanModal: showPlanModal,
+      showTdspZipUnmatchError: showTdspZipUnmatchError,
+      getDirectMailProspect:getDirectMailProspect
+    }
+  };
+
+  module.factory("oeSession", oeSession);
+
+}(angular.module("oe")));	

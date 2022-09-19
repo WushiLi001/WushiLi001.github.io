@@ -1,0 +1,23 @@
+(function() {
+	"use strict";
+
+	var app = angular.module("oe", [ 'ngSanitize' ]);
+
+}());
+
+
+$(document).ready(function() { // wait for DOM to be ready  
+ 
+    if ($('#egWrapper').length > 0 || $('button:contains("Chat")').is(":visible")) { // only run this code if there’s a #chatwidgetcontainter element on the page since this is run site wide
+        $('#egWrapper').hide(); // by default, we hide the chat area as this simplifies the logic (in my opinion) to “only show during hours” instead of “hide outside of hours”
+        $('button:contains("Chat")').hide();
+        var current_date = new Date(); // get current date/timestamp
+        var hour = current_date.getUTCHours(); // get UTC Hours value since Date() objects in JS are UTC, and we want code to be consistent even for users in different timezones
+        var day = current_date.getUTCDay(); // same as above, but get day of the week
+        if (day >= 1 && day <= 5 && hour >= 13 && hour <= 23) { // logic check to see if we are inside of the time frame (in this case, Mon-Fri, 1300-2359 military time)
+            $('#egWrapper').show(); // if above logic check passes, un-hide the chat element
+            $('button:contains("Chat")').show(); // if above logic check passes, un-hide the chat element
+        }
+    }
+
+});
